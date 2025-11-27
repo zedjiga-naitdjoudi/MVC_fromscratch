@@ -6,7 +6,9 @@ use App\Model\User;
 
 class AuthService
 {
-    public UserRepository $userRepository;
+
+    
+    private UserRepository $userRepository;
 
     public function __construct(UserRepository $userRepository)
     {
@@ -15,40 +17,38 @@ class AuthService
 
     public function registerUser(string $name, string $email, string $password): User
     {
-        // Sécurité: Hachage du mot de passe (Argon2id)
         $hashedPassword = password_hash($password, PASSWORD_ARGON2ID);
+        $token = bin2hex(random_bytes(32));
 
-        try {
-            $token = bin2hex(random_bytes(32));
-        } catch (\Exception $e) {
-            throw new \Exception("Erreur lors de la génération du jeton.");
-        }
+        $user = (new User())
+            ->setName($name)
+            ->setEmail($email)
+            ->setPassword($hashedPassword)
+            ->setConfirmationToken($token)
+            ->setIsConfirmed(false);
 
-        $user = new User();
-        $user->setName($name)
-             ->setEmail($email)
-             ->setPassword($hashedPassword)
-             ->setConfirmationToken($token)
-             ->setIsConfirmed(false);
+        $user->setId($this->userRepository->save($user));
 
-        $userId = $this->userRepository->save($user);
-        $user->setId($userId);
-        
         return $user;
     }
+    public function emailExists(string $email): bool    
+    {
+        return $this->userRepository->findByEmail($email) !== null;
+    }
+
 
     public function authenticate(string $email, string $password): ?User
     {
         $user = $this->userRepository->findByEmail($email);
 
-        if ($user && password_verify($password, $user->getPassword())) {
-            // Sécurité: Vérification de re-hachage (à implémenter)
-            if (password_needs_rehash($user->getPassword(), PASSWORD_ARGON2ID)) {
-                // ...
-            }
-            return $user;
+        if (!$user || !password_verify($password, $user->getPassword())) {
+            return null;
         }
 
-        return null;
+        if (password_needs_rehash($user->getPassword(), PASSWORD_ARGON2ID)) {
+            // À implémenter : mettre à jour le hash en DB
+        }
+
+        return $user;
     }
 }

@@ -15,44 +15,90 @@ class Auth
     public function __construct()
     {
         $this->view = new View();
-        $userRepository = new UserRepository();
+        $userRepository = new UserRepository(); // Utilise automatiquement le Singleton DB
         $this->authService = new AuthService($userRepository);
         SessionManager::start();
     }
 
+    /*************   FORMULAIRE INSCRIPTION   *************/
     public function signupForm(): void
     {
         $csrfToken = SessionManager::generateCsrfToken();
-        $this->view->render('signup.php', ['csrf_token' => $csrfToken, 'errors' => SessionManager::get('signup_errors')]);
+        $this->view->render('signup.php', [
+            'csrf_token' => $csrfToken,
+            'errors' => SessionManager::get('signup_errors')
+        ]);
         SessionManager::set('signup_errors', null);
     }
 
+    /*************   ENREGISTREMENT INSCRIPTION   *************/
     public function signup(): void
     {
         $errors = [];
 
-        // 1. CRITIQUE: Vérification de la méthode et du jeton CSRF
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !SessionManager::verifyCsrfToken($_POST['csrf_token'] ?? '')) {
+        /* 1) Sécurité CSRF + Vérification méthode */
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST' ||
+            !SessionManager::verifyCsrfToken($_POST['csrf_token'] ?? '')) {
             $errors[] = "Erreur de sécurité: Jeton CSRF invalide.";
             SessionManager::set('signup_errors', $errors);
             header('Location: /signup');
             exit;
         }
 
-        // 2. Validation et Nettoyage des entrées (Sécurité: filter_input)
-        $name = filter_input(INPUT_POST, 'name', FILTER_SANITIZE_STRING);
-        $email = filter_input(INPUT_POST, 'email', FILTER_VALIDATE_EMAIL);
-        $password = $_POST['pwd'] ?? '';
-        $passwordConfirm = $_POST['pwdConfirm'] ?? '';
+        /* 2) Vérification existence des champs */
+        if (
+            !isset($_POST['name'], $_POST['email'], $_POST['pwd'], $_POST['pwdConfirm']) ||
+            empty($_POST['name']) ||
+            empty($_POST['email']) ||
+            empty($_POST['pwd']) ||
+            empty($_POST['pwdConfirm']) ||
+            count($_POST) !== 5
+        ) {
+            $errors[] = "Tentative de XSS ou champs manquants.";
+            SessionManager::set('signup_errors', $errors);
+            header('Location: /signup');
+            exit;
+        }
 
-        if (empty($name) || strlen($name) < 2) { $errors[] = "Votre prénom doit faire au minimum 2 caractères."; }
-        if (!$email) { $errors[] = "Votre email n'est pas correct."; }
-        if ($this->authService->userRepository->findByEmail($email)) { $errors[] = "L'email existe déjà en base de données."; }
-        if (strlen($password) < 8 || !preg_match('/[a-z]/', $password) || !preg_match('/[A-Z]/', $password) || !preg_match('/[0-9]/', $password)) {
+        /* 3) Nettoyage manuel */
+        $name = ucwords(strtolower(trim($_POST['name'])));
+        $email = strtolower(trim($_POST['email']));
+        $password = $_POST["pwd"];
+        $passwordConfirm = $_POST["pwdConfirm"];
+
+        /******** 4) VALIDATIONS ********/
+
+        // Nom
+        if (strlen($name) < 2) {
+            $errors[] = "Votre prénom doit faire au minimum 2 caractères.";
+        }
+
+        // Email
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            $errors[] = "Votre email n'est pas correct.";
+        } else {
+            if ($this->authService->emailExists($email)) {
+                $errors[] = "Votre email existe déjà en base de données.";
+            }
+
+        }
+
+        // Mot de passe
+        if (
+            strlen($password) < 8 ||
+            !preg_match('/[a-z]/', $password) ||
+            !preg_match('/[A-Z]/', $password) ||
+            !preg_match('/[0-9]/', $password)
+        ) {
             $errors[] = "Votre mot de passe doit faire au minimum 8 caractères avec min, maj, chiffres.";
         }
-        if ($password !== $passwordConfirm) { $errors[] = "Votre mot de passe de confirmation ne correspond pas."; }
 
+        // Confirmation
+        if ($password !== $passwordConfirm) {
+            $errors[] = "Votre mot de passe de confirmation ne correspond pas.";
+        }
+
+        /******** 5) SI PAS D’ERREURS → INSCRIPTION ********/
         if (empty($errors)) {
             try {
                 $this->authService->registerUser($name, $email, $password);
@@ -68,26 +114,32 @@ class Auth
         exit;
     }
 
+    /************* FORMULAIRE LOGIN *************/
     public function loginForm(): void
     {
         $csrfToken = SessionManager::generateCsrfToken();
-        $this->view->render('login.php', ['csrf_token' => $csrfToken, 'error' => SessionManager::get('login_error')]);
+        $this->view->render('login.php', [
+            'csrf_token' => $csrfToken,
+            'error' => SessionManager::get('login_error')
+        ]);
         SessionManager::set('login_error', null);
     }
 
+    /************* CONNEXION *************/
     public function login(): void
     {
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !SessionManager::verifyCsrfToken($_POST['csrf_token'] ?? '')) {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST' ||
+            !SessionManager::verifyCsrfToken($_POST['csrf_token'] ?? '')) {
             SessionManager::set('login_error', "Erreur de sécurité: Jeton CSRF invalide.");
             header('Location: /login');
             exit;
         }
 
-        $email = filter_input(INPUT_POST, 'email', FILTER_SANITIZE_EMAIL);
+        $email = strtolower(trim($_POST['email'] ?? ''));
         $password = $_POST['password'] ?? '';
 
-        if (!$email || empty($password)) {
-            SessionManager::set('login_error', "Veuillez remplir tous les champs.");
+        if (!$email || !$password || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            SessionManager::set('login_error', "Veuillez remplir tous les champs correctement.");
             header('Location: /login');
             exit;
         }
@@ -101,13 +153,14 @@ class Auth
             
             header('Location: /dashboard');
             exit;
-        } else {
-            SessionManager::set('login_error', "Identifiants invalides.");
-            header('Location: /login');
-            exit;
         }
+
+        SessionManager::set('login_error', "Identifiants invalides.");
+        header('Location: /login');
+        exit;
     }
 
+    /************* LOGOUT *************/
     public function logout(): void
     {
         SessionManager::destroy();

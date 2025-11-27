@@ -22,8 +22,8 @@ class User
     public function setEmail(?string $email): self { $this->email = $email; return $this; }
     public function getPassword(): ?string { return $this->password; }
     public function setPassword(?string $password): self { $this->password = $password; return $this; }
-    public function isConfirmed(): ?bool { return $this->isConfirmed; }
-    public function setIsConfirmed(?bool $isConfirmed): self { $this->isConfirmed = $isConfirmed; return $this; }
+    public function isConfirmed(): bool { return $this->isConfirmed;}
+    public function setIsConfirmed(bool $confirmed): self{$this->isConfirmed = $confirmed;return $this;}
     public function getConfirmationToken(): ?string { return $this->confirmationToken; }
     public function setConfirmationToken(?string $confirmationToken): self { $this->confirmationToken = $confirmationToken; return $this; }
     public function getResetToken(): ?string { return $this->resetToken; }
