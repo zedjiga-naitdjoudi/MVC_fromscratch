@@ -1,12 +1,15 @@
 <html>
     <head>
-        <title>Frontoffice</title>
+        <title><?= $title ?? "Mon site" ?></title>
         <link rel="stylesheet" href="/Public/css/style.css">
     </head>
     <body>
         <header>
             <h1>Frontoffice</h1>
         </header>
-        <?php include $this->pathView;?>
+
+        <main>
+            <?= $viewContent ?> <!-- Contenu spécifique à la vue -->
+        </main>
     </body>
 </html>

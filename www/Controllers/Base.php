@@ -2,29 +2,28 @@
 
 namespace App\Controller;
 
-use App\Core\View;
+use App\Core\Render;
 use App\Core\SessionManager;
 
 class Base
 {
-    private View $view;
+    private Render $view;
 
     public function __construct()
     {
-        $this->view = new View();
+        $this->view = new Render('home'); 
         SessionManager::start();
     }
 
     public function index(): void
-    {
-        $data = [
-            'title' => 'Accueil',
-            'content' => 'Bienvenue sur la page d\'accueil de notre mini-Wordpress.',
-            'is_logged_in' => SessionManager::get('is_logged_in')
-        ];
+   {
         
-        $this->view->render('home.php', $data);
-    }
+        $this->view->assign('title', 'Accueil');
+        $this->view->assign('content', 'page d\'accueil');
+        $this->view->assign('is_logged_in', SessionManager::get('is_logged_in'));
+        $this->view->render();
+   }
+
 
     public function dashboard(): void
     {

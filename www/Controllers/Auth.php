@@ -2,19 +2,19 @@
 
 namespace App\Controller;
 
-use App\Core\View;
+use App\Core\Render;
 use App\Core\SessionManager;
 use App\Service\AuthService;
 use App\Service\UserRepository;
 
 class Auth
 {
-    private View $view;
+    private Render $view;
     private AuthService $authService;
 
     public function __construct()
     {
-        $this->view = new View();
+        $this->view = new Render();
         $userRepository = new UserRepository(); // Utilise automatiquement le Singleton DB
         $this->authService = new AuthService($userRepository);
         SessionManager::start();
