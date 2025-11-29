@@ -24,9 +24,7 @@ class AuthService
 
     public function registerUser(string $name, string $email, string $password): User
     {
-        if ($this->repo->findByEmail($email)) {
-            throw new Exception("Email déjà utilisé");
-        }
+       
         $hashedPassword = password_hash($password, PASSWORD_ARGON2ID);
         $token = bin2hex(random_bytes(32));
 
@@ -58,8 +56,7 @@ class AuthService
         $user = $this->repo->findByEmail($email);
         if (!$user) return null;
         if (!password_verify($password, $user->getPassword())) return null;
-        if (!$user->isConfirmed()) return null; // optionally require confirmed email
-        // Option: rehash if needed
+        if (!$user->isConfirmed()) return null; 
         if (password_needs_rehash($user->getPassword(), PASSWORD_ARGON2ID)) {
             $this->repo->updatePassword($user->getId(), password_hash($password, PASSWORD_ARGON2ID));
         }

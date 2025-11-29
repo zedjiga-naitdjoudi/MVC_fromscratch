@@ -24,13 +24,30 @@ class Base
         $this->view->render();
    }
 
-
-    public function dashboard(): void
-    {
-        if (!SessionManager::get('is_logged_in')) {
-            header('Location: /login');
-            exit;
+    protected function renderPage(string $view, string $template = "frontoffice", array $data = []):void{
+        $render = new Render($view, $template);  
+        if(!empty($data)){
+            foreach ($data as $key => $value){
+            $render->assign($key, $value);
+            }
         }
-        $this->view->render('dashboard.php', ['title' => 'Tableau de Bord']);
+        $render->render();
     }
+
+public function dashboard(): void
+{
+    if (!SessionManager::get('is_logged_in')) {
+        $this->renderPage('login', 'frontoffice', [
+            'error' => "Vous devez être connecté."
+        ]);
+        return;
+    }
+
+    $this->renderPage('dashboard', 'backoffice', [
+        'title' => 'Tableau de Bord',
+        'user_id' => SessionManager::get('user_id')
+    ]);
+}
+
+
 }

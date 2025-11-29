@@ -29,3 +29,7 @@ action: logout
 /dashboard:
   controller: Base
   action: dashboard
+
+/activation:
+  controller: Auth
+  action: activation

@@ -8,7 +8,7 @@ class Render
     private string $pathTemplate;
     private array $data = [];
 
-    public function __construct(string $view, string $template = "frontoffice")
+    public function __construct(string $view = "home", string $template = "frontoffice")
     {
         $this->setView($view);
         $this->setTemplate($template);
@@ -36,19 +36,14 @@ class Render
 
     public function render(): void
     {
-        if (!$this->check()) {
+        if ($this->check()) {
+            extract($this->data);
+            include $this->pathTemplate;
+        } else {
             die("Problème avec le template ou la vue");
         }
-
-        // Extraire les variables assignées
-        extract($this->data);
-
-        // Le contenu de la vue est injecté dans $viewContent
-        ob_start();
-        include $this->pathView;
-        $viewContent = ob_get_clean();
-
-        // Inclure le template principal (layout)
-        include $this->pathTemplate;
     }
+
+
+    
 }
