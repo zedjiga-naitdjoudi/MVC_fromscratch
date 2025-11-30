@@ -7,9 +7,11 @@
 <?php endif; ?>
 
 <?php if (!empty($error)): ?><p><?= htmlspecialchars($error) ?></p><?php endif; ?>
-<form method="POST" action="/login">
+<form method="POST" action="/login-post">
+    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf_token) ?>">
     <input type="email" name="email" placeholder="Email" required>
     <input type="password" name="password" placeholder="Mot de passe" required>
     <button type="submit">Se connecter</button>
 </form>
+
 <p><a href="/forgot">Mot de passe oublié ?</a></p>

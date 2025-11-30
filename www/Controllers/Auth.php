@@ -2,7 +2,6 @@
 
 namespace App\Controller;
 
-use App\Core\Render;
 use App\Core\SessionManager;
 use App\Service\AuthService;
 use App\Service\UserRepository;
@@ -23,159 +22,265 @@ class Auth extends Base
         SessionManager::start();
     }
 
+    /**
+     * Affiche le formulaire d'inscription
+     */
     public function signupForm(): void
     {
         $csrfToken = SessionManager::generateCsrfToken();
 
         $this->renderPage("signup", "frontoffice", [
             "csrf_token" => $csrfToken,
-            "errors" => SessionManager::get("signup_errors")
+            "errors" => []
         ]);
     }
 
-    public function signup(): void
-    {
-        $errors = [];
+    /**
+     * Traite l'inscription d'un nouvel utilisateur
+     */
+public function signup(): void
+{
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        $this->renderPage("signup", "frontoffice", [
+            "csrf_token" => SessionManager::generateCsrfToken(),
+            "errors" => ["Méthode non autorisée."]
+        ]);
+        return;
+    }
 
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST' ||
-            !SessionManager::verifyCsrfToken($_POST['csrf_token'] ?? '')
-        ) {
-            $this->renderPage("signup", "frontoffice", [
-                "errors" => ["Erreur CSRF."]
-            ]);
-            return;
-        }
+    if (!SessionManager::verifyCsrfToken($_POST['csrf_token'] ?? '')) {
+        $this->renderPage("signup", "frontoffice", [
+            "csrf_token" => SessionManager::generateCsrfToken(),
+            "errors" => ["Erreur CSRF. Veuillez réessayer."]
+        ]);
+        return;
+    }
 
-        if (
-            !isset($_POST['name'], $_POST['email'], $_POST['pwd'], $_POST['pwdConfirm']) ||
-            empty($_POST['name']) ||
-            empty($_POST['email']) ||
-            empty($_POST['pwd']) ||
-            empty($_POST['pwdConfirm'])
-        ) {
-            $this->renderPage("signup", "frontoffice", [
-                "errors" => ["Champs manquants ou tentative XSS."]
-            ]);
-            return;
-        }
+    $name = ucwords(strtolower(trim($_POST['name'] ?? '')));
+    $email = strtolower(trim($_POST['email'] ?? ''));
+    $password = $_POST["pwd"] ?? '';
+    $passwordConfirm = $_POST["pwdConfirm"] ?? '';
 
-        $name = ucwords(strtolower(trim($_POST['name'])));
-        $email = strtolower(trim($_POST['email']));
-        $password = $_POST["pwd"];
-        $passwordConfirm = $_POST["pwdConfirm"];
+    if (!$name || !$email || !$password || !$passwordConfirm) {
+        $this->renderPage("signup", "frontoffice", [
+            "csrf_token" => SessionManager::generateCsrfToken(),
+            "errors" => ["Tous les champs sont obligatoires."]
+        ]);
+        return;
+    }
 
-        if (strlen($name) < 2) {
-            $errors[] = "Votre prénom doit faire au minimum 2 caractères.";
-        }
+    if (strlen($name) < 2) {
+        $this->errors[] = "Votre prénom doit faire au minimum 2 caractères.";
+    }
 
-        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            $errors[] = "Email incorrect.";
-        } elseif ($this->repo->emailExists($email)) {
-            $errors[] = "Email déjà utilisé.";
-        }
-
-        if (
-            strlen($password) < 8 ||
-            !preg_match('/[a-z]/', $password) ||
-            !preg_match('/[A-Z]/', $password) ||
-            !preg_match('/[0-9]/', $password)
-        ) {
-            $errors[] = "Mot de passe trop faible.";
-        }
-
-        if ($password !== $passwordConfirm) {
-            $errors[] = "Les mots de passe ne correspondent pas.";
-        }
-
-        if (!empty($errors)) {
-            $this->renderPage("signup", "frontoffice", ["errors" => $errors]);
-            return;
-        }
-
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $this->errors[] = "Email incorrect.";
+    } else {
         try {
-            $this->authService->registerUser($name, $email, $password);
-
-            $this->renderPage("login", "frontoffice", [
-                "message" => "Votre compte a été créé. Vous pouvez maintenant vous connecter."
-            ]);
-            return;
+            if ($this->repo->emailExists($email)) {
+                $this->errors[] = "Email déjà utilisé.";
+            }
         } catch (\Exception $e) {
-            $this->renderPage("signup", "frontoffice", [
-                "errors" => ["Erreur interne : " . $e->getMessage()]
-            ]);
-            return;
+            $this->errors[] = "Erreur lors de la vérification de l'email.";
         }
     }
 
-    public function activation(): void
-    {
-        $token = $_GET['token'] ?? null;
+    if (
+        strlen($password) < 8 ||
+        !preg_match('/[a-z]/', $password) ||
+        !preg_match('/[A-Z]/', $password) ||
+        !preg_match('/[0-9]/', $password)
+    ) {
+        $this->errors[] = "Mot de passe trop faible (min 8 caractères, majuscules, minuscules, chiffres).";
+    }
 
-        if (!$token) {
-            $this->renderPage("login", "frontoffice", [
-                "error" => "Lien d'activation invalide."
-            ]);
-            return;
-        }
+    if ($password !== $passwordConfirm) {
+        $this->errors[] = "Les mots de passe ne correspondent pas.";
+    }
 
-        if ($this->authService->confirm($token)) {
-            $this->renderPage("login", "frontoffice", [
-                "message" => "Votre compte a été activé !"
-            ]);
-            return;
-        }
+    if (!empty($this->errors)) {
+        $this->renderPage("signup", "frontoffice", [
+            "csrf_token" => SessionManager::generateCsrfToken(),
+            "errors" => $this->errors
+        ]);
+        return;
+    }
+
+    try {
+        $this->authService->registerUser($name, $email, $password);
 
         $this->renderPage("login", "frontoffice", [
-            "error" => "Lien invalide ou déjà utilisé."
+            "csrf_token" => SessionManager::generateCsrfToken(),
+            "message" => "Votre compte a été créé. Un email de confirmation vous a été envoyé. Veuillez activer votre compte avant de vous connecter."
         ]);
+        return;
+    } catch (\PDOException $e) {
+        if ($e->getCode() === '23505') {
+            $this->renderPage("signup", "frontoffice", [
+                "csrf_token" => SessionManager::generateCsrfToken(),
+                "errors" => ["Email déjà utilisé."]
+            ]);
+            return;
+        }
+        $this->renderPage("signup", "frontoffice", [
+            "csrf_token" => SessionManager::generateCsrfToken(),
+            "errors" => ["Erreur lors de l'inscription."]
+        ]);
+        return;
+    }
+}
+
+
+    /**
+     * Active le compte utilisateur via le token reçu par email
+     */
+public function activation(): void
+{
+    $token = $_GET['token'] ?? null;
+
+    if (!$token) {
+        $this->renderPage("login", "frontoffice", [
+            "csrf_token" => SessionManager::generateCsrfToken(),
+            "error" => "Lien d'activation invalide."
+        ]);
+        return; // <-- stoppe ici
     }
 
+    $confirmed = $this->authService->confirm($token);
+    
+    if ($confirmed) {
+        $this->renderPage("login", "frontoffice", [
+            "csrf_token" => SessionManager::generateCsrfToken(),
+            "message" => "Votre compte a été activé avec succès ! Vous pouvez maintenant vous connecter."
+        ]);
+        return; // <-- stoppe ici
+    }
+
+    $this->renderPage("login", "frontoffice", [
+        "csrf_token" => SessionManager::generateCsrfToken(),
+        "error" => "Lien d'activation invalide ou déjà utilisé."
+    ]);
+    return; // <-- stoppe ici
+}
+
+
+    /**
+     * Affiche le formulaire de connexion
+     */
     public function loginForm(): void
     {
         $csrfToken = SessionManager::generateCsrfToken();
 
         $this->renderPage("login", "frontoffice", [
             "csrf_token" => $csrfToken,
-            "error" => SessionManager::get("login_error")
+            "error" => null,
+            "message" => null
         ]);
     }
 
+    /**
+     * Traite la connexion de l'utilisateur
+     */
     public function login(): void
-    {
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST' ||
-            !SessionManager::verifyCsrfToken($_POST['csrf_token'] ?? '')
-        ) {
-            $this->renderPage("login", "frontoffice", ["error" => "Erreur CSRF."]);
-            return;
-        }
-
-        $email = strtolower(trim($_POST['email'] ?? ''));
-        $password = $_POST['password'] ?? '';
-
-        if (!$email || !$password || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            $this->renderPage("login", "frontoffice", ["error" => "Champs invalides."]);
-            return;
-        }
-
-        $user = $this->authService->authenticate($email, $password);
-
-        if (!$user) {
-            $this->renderPage("login", "frontoffice", [
-                "error" => "Identifiants incorrects."
-            ]);
-            return;
-        }
-
-        SessionManager::regenerateId();
-        SessionManager::set("user_id", $user->getId());
-        SessionManager::set("is_logged_in", true);
-
-        $this->renderPage("dashboard", "backoffice");
+{
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST' ||
+        !SessionManager::verifyCsrfToken($_POST['csrf_token'] ?? '')
+    ) {
+        $this->renderPage("login", "frontoffice", [
+            "csrf_token" => SessionManager::generateCsrfToken(),
+            "error" => "Erreur CSRF."
+        ]);
+        return;
     }
 
+    $email = strtolower(trim($_POST['email'] ?? ''));
+    $password = $_POST['password'] ?? '';
+
+    if (!$email || !$password || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $this->renderPage("login", "frontoffice", [
+            "csrf_token" => SessionManager::generateCsrfToken(),
+            "error" => "Champs invalides."
+        ]);
+        return;
+    }
+
+    $user = $this->authService->authenticate($email, $password);
+
+    if (!$user) {
+        $this->renderPage("login", "frontoffice", [
+            "csrf_token" => SessionManager::generateCsrfToken(),
+            "error" => "Identifiants incorrects ou compte non activé. Veuillez vérifier vos emails."
+        ]);
+        return;
+    }
+
+    // Connexion réussie
+    SessionManager::regenerateId();
+    SessionManager::set("user_id", $user->getId());
+    SessionManager::set("user_name", $user->getName());
+    SessionManager::set("user_email", $user->getEmail());
+    SessionManager::set("is_logged_in", true);
+    SessionManager::set("is_active", true);
+
+    $this->renderPage("dashboard", "backoffice", [
+        "user" => [
+            "name" => $user->getName(),
+            "email" => $user->getEmail()
+        ]
+    ]);
+    return;
+}
+
+    /**
+     * Déconnexion de l'utilisateur
+     */
     public function logout(): void
     {
         SessionManager::destroy();
-        $this->renderPage("home");
+        $this->renderPage("home", "frontoffice");
+    }
+
+    /**
+     * Vérifie si l'utilisateur est authentifié et actif
+     */
+    private function isAuth(): void
+    {
+        if (!SessionManager::get("is_logged_in") || 
+            !SessionManager::get("is_active")) {
+            $this->renderPage("login", "frontoffice", [
+                "csrf_token" => SessionManager::generateCsrfToken(),
+                "error" => "Vous devez être connecté pour accéder à cette page."
+            ]);
+        }
+    }
+
+    /**
+     * Affiche le dashboard (protégé)
+     */
+    public function renderDashboard(): void
+    {
+        $this->isAuth();
+        
+        $this->renderPage("dashboard", "backoffice", [
+            "user" => [
+                "name" => SessionManager::get("user_name"),
+                "email" => SessionManager::get("user_email")
+            ]
+        ]);
+    }
+
+    /**
+     * Affiche le profil utilisateur (protégé)
+     */
+    public function renderProfil(): void
+    {
+        $this->isAuth();
+        
+        $this->renderPage("user", "backoffice", [
+            "user" => [
+                "name" => SessionManager::get("user_name"),
+                "email" => SessionManager::get("user_email")
+            ]
+        ]);
     }
 }
