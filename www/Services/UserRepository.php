@@ -63,8 +63,7 @@ class UserRepository
             'is_confirmed' => (int)$user->isConfirmed()
         ]);
        
-        return (int) $this->pdo->lastInsertId()
-;
+        return (int) $this->pdo->lastInsertId();
         
     }
   
@@ -78,17 +77,28 @@ class UserRepository
 
     public function setResetToken(int $userId, string $token, string $expiresAt): void
     {
-        $sql = "UPDATE {$this->table} SET reset_token = :token, reset_token_expires_at = :expires WHERE id = :id";
+        $sql = "UPDATE {$this->table} 
+                SET reset_token = :token, reset_token_expires_at = :expires 
+                WHERE id = :id";
         $stmt = $this->pdo->prepare($sql);
-        $stmt->execute(['token'=>$token, 'expires'=>$expiresAt, 'id'=>$userId]);
+        $stmt->execute([
+            'token' => $token,
+            'expires' => $expiresAt,
+            'id' => $userId
+        ]);
     }
 
     public function updatePassword(int $userId, string $hashedPassword): void
     {
-        $sql = "UPDATE {$this->table} SET password = :pwd, reset_token = NULL, reset_token_expires_at = NULL WHERE id = :id";
+        $sql = "UPDATE {$this->table} 
+                SET password = :pwd, reset_token = NULL, reset_token_expires_at = NULL 
+             WHERE id = :id";
         $stmt = $this->pdo->prepare($sql);
-        $stmt->execute(['pwd' => $hashedPassword, 'id' => $userId]);
-    }
+        $stmt->execute([
+            'pwd' => $hashedPassword,
+            'id' => $userId
+        ]);
+}
     private function hydrate(array $data): User
     {
         $u = new User();

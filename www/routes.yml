@@ -22,10 +22,6 @@
   controller: Auth
   action: logout
 
-/forgot:
-controller: Auth
-action: logout
-
 /dashboard:
   controller: Base
   action: dashboard
@@ -33,3 +29,19 @@ action: logout
 /activation:
   controller: Auth
   action: activation
+
+/forgot:
+  controller: Auth
+  action: forgotForm
+
+/forgot-post:
+  controller: Auth
+  action: forgot
+
+/reset-password:
+  controller: Auth
+  action: resetForm
+
+/reset-password-post:
+  controller: Auth
+  action: reset

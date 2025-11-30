@@ -58,18 +58,20 @@ class AuthService
         if (!password_verify($password, $user->getPassword())) return null;
         if (!$user->isConfirmed()) return null; 
         if (password_needs_rehash($user->getPassword(), PASSWORD_ARGON2ID)) {
-            $this->repo->updatePassword($user->getId(), password_hash($password, PASSWORD_ARGON2ID));
+            $newHash = password_hash($password, PASSWORD_ARGON2ID);
+            $this->repo->updatePassword($user->getId(), $newHash);
         }
+
         return $user;
     }
 
-    public function requestPasswordReset(string $email): bool
+    public function forgotPassword(string $email): bool
     {
         $user = $this->repo->findByEmail($email);
         if (!$user) return false;
         $token = bin2hex(random_bytes(32));
-        $expires = (new \DateTime('+1 hour'))->format('Y-m-d H:i:s');
-        $this->repo->setResetToken($user->getId(), $token, $expires);
+        $expiresAt = (new \DateTime('+1 hour'))->format('Y-m-d H:i:s');
+        $this->repo->setResetToken($user->getId(), $token, $expiresAt);
         $resetLink = sprintf('http://localhost:8080/reset-password?token=%s&email=%s', $token, urlencode($email));
         $this->mailer->sendPasswordReset($email, $user->getName(), $resetLink);
         return true;
@@ -79,9 +81,9 @@ class AuthService
     {
         $user = $this->repo->findByResetToken($token);
         if (!$user) return false;
-        // check expiry
-        $expires = $user->getResetTokenExpiresAt();
-        if ($expires && new \DateTime($expires) < new \DateTime()) return false;
+        
+        $expiresAt = $user->getResetTokenExpiresAt();
+        if ($expiresAt && new \DateTime($expiresAt) < new \DateTime()) return false;
         $hashed = password_hash($newPassword, PASSWORD_ARGON2ID);
         $this->repo->updatePassword($user->getId(), $hashed);
         return true;

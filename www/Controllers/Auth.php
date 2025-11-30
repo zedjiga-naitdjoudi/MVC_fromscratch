@@ -283,4 +283,99 @@ public function activation(): void
             ]
         ]);
     }
+
+    public function forgotForm(): void{    
+        $csrfToken = SessionManager::generateCsrfToken();
+        $this->renderPage("forgot", "frontoffice", [
+        "csrf_token" => $csrfToken,
+        "errors" => []
+    ]);
+    }
+    public function forgot(): void{
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST' ||
+        !SessionManager::verifyCsrfToken($_POST['csrf_token'] ?? '')
+        ) {
+            $this->renderPage("forgot", "backoffice", [
+                "csrf_token" => SessionManager::generateCsrfToken(),
+                "error" => "Erreur CSRF."
+            ]);
+            return;
+        }
+
+        $email = strtolower(trim($_POST['email'] ?? ''));
+        if (!$email || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            $this->renderPage("forgot", "frontoffice", [
+                "csrf_token" => SessionManager::generateCsrfToken(),
+                "errors" => ["Email invalide."]
+            ]);
+            return;
+    }
+    
+    if ($this->authService->forgotPassword($email)) {
+        $this->renderPage("login", "frontoffice", [
+            "csrf_token" => SessionManager::generateCsrfToken(),
+            "message" => "Un lien de réinitialisation a été envoyé (simulation)."
+        ]);
+        return;
+    }
+
+    $this->renderPage("forgot", "frontoffice", [
+        "csrf_token" => SessionManager::generateCsrfToken(),
+        "errors" => ["Email introuvable."]
+    ]);    
+
+
+
+
+
+    }
+    public function resetForm() : void {
+        $token = $_GET['token'] ?? null;
+        $csrfToken = SessionManager::generateCsrfToken();
+
+        $this->renderPage("reset", "frontoffice", [
+            "csrf_token" => $csrfToken,
+            "token" => $token,
+            "errors" => []
+        ]);  
+        
+}
+public function reset(): void
+{
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST' ||
+        !SessionManager::verifyCsrfToken($_POST['csrf_token'] ?? '')
+    ) {
+        $this->renderPage("reset", "frontoffice", [
+            "csrf_token" => SessionManager::generateCsrfToken(),
+            "errors" => ["Erreur CSRF."]
+        ]);
+        return;
+    }
+
+    $token = $_POST['token'] ?? '';
+    $password = $_POST['password'] ?? '';
+    $confirm = $_POST['passwordConfirm'] ?? '';
+
+    if ($password !== $confirm) {
+        $this->renderPage("reset", "frontoffice", [
+            "csrf_token" => SessionManager::generateCsrfToken(),
+            "errors" => ["Les mots de passe ne correspondent pas."]
+        ]);
+        return;
+    }
+
+    if ($this->authService->resetPassword($token, $password)) {
+        $this->renderPage("login", "frontoffice", [
+            "csrf_token" => SessionManager::generateCsrfToken(),
+            "message" => "Votre mot de passe a été réinitialisé avec succès."
+        ]);
+        return;
+    }
+
+    $this->renderPage("reset", "frontoffice", [
+        "csrf_token" => SessionManager::generateCsrfToken(),
+        "errors" => ["Lien invalide ou expiré."]
+    ]);
+
+}
 }
