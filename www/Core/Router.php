@@ -26,52 +26,53 @@ class Router
         }
     }
 
-public function dispatch(): void
-{
-    $uri = strtok($_SERVER['REQUEST_URI'], '?');
-    $uri = rtrim($uri, '/');
-    $uri = $uri === '' ? '/' : $uri;
+    public function dispatch(): void
+    {
+        $uri = strtok($_SERVER['REQUEST_URI'], '?');
+        $uri = rtrim($uri, '/');
+        $uri = $uri === '' ? '/' : $uri;
 
-    // Vérifier si la route existe dans routes.yml
-    if (!isset($this->routes[$uri])) {
+        if (!isset($this->routes[$uri])) {
+            $slug = ltrim($uri, '/');
+            $pageManager = new \App\Service\PageManager();
+            $page = $pageManager->findBySlug($slug);
 
-        // Tentative de récupération via slug dynamique
-        $slug = ltrim($uri, '/');
+            if ($page) {
+                $controller = new \App\Controller\PageController();
+                $controller->view($slug);
+                return;
+            }
 
-        $pageManager = new \App\Service\PageManager();
-        $page = $pageManager->findBySlug($slug);
-
-        if ($page) {
-            // Charger PageController
-            $controller = new \App\Controller\PageController();
-            $controller->view($slug);
+            $this->handleError(404, "Route non trouvée pour l'URI: {$uri}");
             return;
         }
 
-        // Aucune route et aucune page dynamique
-        $this->handleError(404, "Route non trouvée pour l'URI: {$uri}");
-        return;
+        $route = $this->routes[$uri];
+        $controllerName = 'App\\Controller\\' . $route['controller'];
+        $actionName = $route['action'];
+
+        $controller = new $controllerName();
+
+        if (!method_exists($controller, $actionName)) {
+            $this->handleError(500, "Action '{$actionName}' introuvable dans le contrôleur '{$controllerName}'.");
+            return;
+        }
+
+        $uriParts = explode('/', trim($_SERVER['REQUEST_URI'], '/'));
+        $idFromPath = $uriParts[1] ?? null;
+        $idFromQuery = $_GET['id'] ?? null;
+        $id = $idFromPath ?? $idFromQuery;
+
+        if ($id !== null) {
+            $controller->$actionName((int)$id);
+        } else {
+            $controller->$actionName();
+        }
     }
-
-    // Route trouvée dans routes.yml
-    $route = $this->routes[$uri];
-    $controllerName = 'App\\Controller\\' . $route['controller'];
-    $actionName = $route['action'];
-
-    $controller = new $controllerName();
-
-    if (!method_exists($controller, $actionName)) {
-        $this->handleError(500, "Action '{$actionName}' introuvable dans le contrôleur '{$controllerName}'.");
-        return;
-    }
-
-    $controller->$actionName();
-}
-
 
     private function handleError(int $code, string $message): void
     {
-        http_response_code($code );
+        http_response_code($code);
         $errorController = new ErrorController();
         $errorController->show($code, $message);
     }

@@ -169,14 +169,35 @@ public function index(): void
     }
 
     
-    public function delete(int $id): void
-    {
-        if (!SessionManager::get('is_logged_in')) { $this->index(); return; }
-        $ok = $this->manager->delete($id);
-        if ($ok) SessionManager::set('flash_success', 'Page supprimée.');
-        else SessionManager::set('flash_error', 'Erreur suppression.');
-        $this->index();
+public function delete(): void
+{
+    if (!SessionManager::get('is_logged_in')) { 
+        $this->index(); 
+        return; 
     }
+
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !SessionManager::verifyCsrfToken($_POST['csrf_token'] ?? '')) {
+        SessionManager::set('flash_error', 'Erreur CSRF.');
+        $this->index(); 
+        return;
+    }
+
+    $id = (int)($_POST['id'] ?? 0);
+    if ($id === 0) {
+        SessionManager::set('flash_error', 'ID manquant pour suppression.');
+        $this->index(); 
+        return;
+    }
+
+    $ok = $this->manager->delete($id);
+    if ($ok) {
+        SessionManager::set('flash_success', 'Page supprimée.');
+    } else {
+        SessionManager::set('flash_error', 'Erreur suppression.');
+    }
+    $this->index();
+}
+
 
    
     public function view(string $slug): void

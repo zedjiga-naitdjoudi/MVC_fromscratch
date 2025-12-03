@@ -45,6 +45,26 @@ public function findByAuthorId(int $authorId): array
     }
     return $pages;
 }
+public function findAll(): array
+{
+    $sql = "SELECT * FROM {$this->table} ORDER BY updated_at DESC";
+    $stmt = $this->pdo->query($sql);
+    $rows = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+
+    $pages = [];
+    foreach ($rows as $row) {
+        $page = (new \App\Model\Page())
+            ->setId($row['id'])
+            ->setTitle($row['title'])
+            ->setSlug($row['slug'])
+            ->setContent($row['content'])
+            ->setIsPublished((bool)$row['is_published'])
+            ->setAuthorId($row['author_id'])
+            ->setUpdatedAt($row['updated_at']);
+        $pages[] = $page;
+    }
+    return $pages;
+}
 
 
     public function findById(int $id): ?Page{
@@ -85,7 +105,7 @@ public function findByAuthorId(int $authorId): array
             'title' => $page->getTitle(),
             'slug' => $page->getSlug(),
             'content' => $page->getContent(),
-            'is_published' => (bool)$page->isPublished(),
+            'is_published'=> $page->isPublished() ? 1 : 0, // ✅is_published' => (bool)$page->isPublished(),
             'author_id' => $page->getAuthorId()
 
         ]);
@@ -101,7 +121,7 @@ public function findByAuthorId(int $authorId): array
             'title' => $page->getTitle(),
             'slug' => $page->getSlug(),
             'content' => $page->getContent(),
-            'is_published' => (bool)$page->isPublished(),
+            'is_published'=> $page->isPublished() ? 1 : 0, // ✅
             'author_id' => $page->getAuthorId(),
             'id' => $page->getId()
         ]);

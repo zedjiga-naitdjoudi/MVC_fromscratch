@@ -45,6 +45,8 @@ public function dashboard(): void
 
     $pageManager = new \App\Service\PageManager();
     $pages = $pageManager->findAll();
+    
+
 
     $this->renderPage('dashboard', 'backoffice', [
         'title' => 'Tableau de Bord',
