@@ -36,15 +36,7 @@ public function findAll(): array
 
     $pages = [];
     foreach ($rows as $row) {
-        $page = (new Page())
-            ->setId($row['id'])
-            ->setTitle($row['title'])
-            ->setSlug($row['slug'])
-            ->setContent($row['content'])
-            ->setIsPublished((bool)$row['is_published'])
-            ->setAuthorId($row['author_id'])
-            ->setUpdatedAt($row['updated_at']);
-        $pages[] = $page;
+       $pages[] = $this->hydrate($row);
     }
     return $pages;
 }
