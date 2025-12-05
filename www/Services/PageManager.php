@@ -27,24 +27,7 @@ class PageManager {
         return $p;
     }
     
-public function findByAuthorId(int $authorId): array
-{
-    $stmt = $this->pdo->prepare("SELECT * FROM pages WHERE author_id = :author_id");
-    $stmt->execute(['author_id' => $authorId]);
-    $rows = $stmt->fetchAll();
 
-    $pages = [];
-    foreach ($rows as $row) {
-        $pages[] = (new Page())
-            ->setId($row['id'])
-            ->setTitle($row['title'])
-            ->setSlug($row['slug'])
-            ->setContent($row['content'])
-            ->setIsPublished((bool)$row['is_published'])
-            ->setAuthorId($row['author_id']);
-    }
-    return $pages;
-}
 public function findAll(): array
 {
     $sql = "SELECT * FROM {$this->table} ORDER BY updated_at DESC";
@@ -53,7 +36,7 @@ public function findAll(): array
 
     $pages = [];
     foreach ($rows as $row) {
-        $page = (new \App\Model\Page())
+        $page = (new Page())
             ->setId($row['id'])
             ->setTitle($row['title'])
             ->setSlug($row['slug'])

@@ -167,7 +167,7 @@ public function activation(): void
     /**
      * Affiche le formulaire de connexion
      */
-    public function loginForm(): void
+public function loginForm(): void
     {
         $csrfToken = SessionManager::generateCsrfToken();
 
@@ -181,7 +181,7 @@ public function activation(): void
     /**
      * Traite la connexion de l'utilisateur
      */
-    public function login(): void
+public function login(): void
 {
     if ($_SERVER['REQUEST_METHOD'] !== 'POST' ||
         !SessionManager::verifyCsrfToken($_POST['csrf_token'] ?? '')
@@ -222,27 +222,29 @@ public function activation(): void
     SessionManager::set("is_logged_in", true);
     SessionManager::set("is_active", true);
 
-    $this->renderPage("dashboard", "backoffice", [
-        "user" => [
-            "name" => $user->getName(),
-            "email" => $user->getEmail()
-        ]
-    ]);
-    return;
+    // 👉 Appeler directement PageController::index()
+    $pageController = new \App\Controller\PageController();
+    $pageController->index();
 }
+
 
     /**
      * Déconnexion de l'utilisateur
      */
-    public function logout(): void
-    {
-        SessionManager::destroy();
-        $this->renderPage("home", "frontoffice");
-    }
+public function logout(): void
+{
+    // Détruire la session proprement
+    SessionManager::start();
+    SessionManager::destroy();
 
-    /**
-     * Vérifie si l'utilisateur est authentifié et actif
-     */
+    // Optionnel : message flash
+    SessionManager::set('flash_success', 'Vous avez été déconnecté.');
+
+    // Réutiliser la logique de Base::index()
+    $base = new \App\Controller\Base();
+    $base->index();
+}
+
     private function isAuth(): void
     {
         if (!SessionManager::get("is_logged_in") || 
@@ -257,33 +259,7 @@ public function activation(): void
     /**
      * Affiche le dashboard (protégé)
      */
-    public function renderDashboard(): void
-    {
-        $this->isAuth();
-        
-        $this->renderPage("dashboard", "backoffice", [
-            "user" => [
-                "name" => SessionManager::get("user_name"),
-                "email" => SessionManager::get("user_email")
-            ]
-        ]);
-    }
-
-    /**
-     * Affiche le profil utilisateur (protégé)
-     */
-    public function renderProfil(): void
-    {
-        $this->isAuth();
-        
-        $this->renderPage("user", "backoffice", [
-            "user" => [
-                "name" => SessionManager::get("user_name"),
-                "email" => SessionManager::get("user_email")
-            ]
-        ]);
-    }
-
+   
     public function forgotForm(): void{    
         $csrfToken = SessionManager::generateCsrfToken();
         $this->renderPage("forgot", "frontoffice", [

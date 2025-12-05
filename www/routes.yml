@@ -23,8 +23,8 @@
   action: logout
 
 /dashboard:
-  controller: Base
-  action: dashboard
+  controller: PageController
+  action: index
 
 /activation:
   controller: Auth

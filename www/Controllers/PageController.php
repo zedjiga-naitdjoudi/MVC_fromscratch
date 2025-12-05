@@ -26,9 +26,10 @@ public function index(): void
     }
 
     $userId = SessionManager::get('user_id');
-    $pages = $this->manager->findByAuthorId($userId);
+    $pages = $this->manager->findAll();
 
-    $render = new Render('list');
+    $render = new Render('pages', 'backoffice');
+
     $render->assign('pages', $pages);
 
     $flash = SessionManager::get('flash_success') ?: SessionManager::get('flash_error');
@@ -127,20 +128,28 @@ public function index(): void
         $render->render();
     }
 
-    public function update(): void
-    {
-        if (!SessionManager::get('is_logged_in')) { $this->index(); return; }
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !SessionManager::verifyCsrfToken($_POST['csrf_token'] ?? '')) {
-            SessionManager::set('flash_error', 'Erreur CSRF.');
-            $this->index(); return;
-        }
+public function update(): void
+{
+    if (!SessionManager::get('is_logged_in')) { $this->index(); return; }
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !SessionManager::verifyCsrfToken($_POST['csrf_token'] ?? '')) {
+        SessionManager::set('flash_error', 'Erreur CSRF.');
+        $this->index(); return;
+    }
 
-        $id = (int)($_POST['id'] ?? 0);
-        $page = $this->manager->findById($id);
-        if (!$page) {
-            SessionManager::set('flash_error', 'Page introuvable.');
-            $this->index(); return;
-        }
+    $id = (int)($_POST['id'] ?? 0);
+    $page = $this->manager->findById($id);
+    if (!$page) {
+        SessionManager::set('flash_error', 'Page introuvable.');
+        $this->index(); return;
+    }
+
+    // ✅ Vérification auteur
+    if ($page->getAuthorId() !== SessionManager::get('user_id')) {
+        SessionManager::set('flash_error', 'Vous ne pouvez pas modifier cette page.');
+        $this->index(); return;
+    }
+
+
 
         $title = trim($_POST['title'] ?? '');
         $slug = $this->slugify(trim($_POST['slug'] ?? $title));
@@ -189,6 +198,21 @@ public function delete(): void
         return;
     }
 
+    // ✅ Vérification auteur
+    $page = $this->manager->findById($id);
+    if (!$page) {
+        SessionManager::set('flash_error', 'Page introuvable.');
+        $this->index();
+        return;
+    }
+
+    if ($page->getAuthorId() !== SessionManager::get('user_id')) {
+        SessionManager::set('flash_error', 'Vous ne pouvez pas supprimer cette page.');
+        $this->index();
+        return;
+    }
+
+    // Suppression autorisée
     $ok = $this->manager->delete($id);
     if ($ok) {
         SessionManager::set('flash_success', 'Page supprimée.');

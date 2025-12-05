@@ -9,20 +9,31 @@ class Base
 {
     private Render $view;
 
-    public function __construct()
+public function __construct()
     {
-        $this->view = new Render('home'); 
+        
         SessionManager::start();
     }
 
-    public function index(): void
-   {
-        
-        $this->view->assign('title', 'Accueil');
-        $this->view->assign('content', 'page d\'accueil');
-        $this->view->assign('is_logged_in', SessionManager::get('is_logged_in'));
-        $this->view->render();
-   }
+public function index(): void
+{
+    $data = [
+        'title' => 'Accueil',
+        'content' => 'Ceci est la page d\'accueil.',
+        'is_logged_in' => SessionManager::get('is_logged_in')
+    ];
+
+    $flash = SessionManager::get('flash_success') ?: SessionManager::get('flash_error');
+    if ($flash) {
+        $data['flash'] = $flash;
+        SessionManager::set('flash_success', null);
+        SessionManager::set('flash_error', null);
+    }
+
+    $this->renderPage('home', 'frontoffice', $data);
+}
+
+
 
     protected function renderPage(string $view, string $template = "frontoffice", array $data = []):void{
         $render = new Render($view, $template);  
@@ -34,26 +45,7 @@ class Base
         $render->render();
     }
 
-public function dashboard(): void
-{
-    if (!SessionManager::get('is_logged_in')) {
-        $this->renderPage('login', 'frontoffice', [
-            'error' => "Vous devez être connecté."
-        ]);
-        return;
-    }
 
-    $pageManager = new \App\Service\PageManager();
-    $pages = $pageManager->findAll();
-    
-
-
-    $this->renderPage('dashboard', 'backoffice', [
-        'title' => 'Tableau de Bord',
-        'pages' => $pages,
-        'user_id' => SessionManager::get('user_id')
-    ]);
-}
 
 
 

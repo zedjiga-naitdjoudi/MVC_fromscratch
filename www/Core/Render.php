@@ -16,11 +16,13 @@ class Render
 
     public function setView(string $view): void
     {
+       
         $this->pathView = __DIR__ . "/../Views/{$view}.php";
     }
 
     public function setTemplate(string $template): void
     {
+       
         $this->pathTemplate = __DIR__ . "/../Views/Templates/{$template}.php";
     }
 
@@ -36,14 +38,17 @@ class Render
 
     public function render(): void
     {
-        if ($this->check()) {
-            extract($this->data);
-            include $this->pathTemplate;
-        } else {
-            die("Problème avec le template ou la vue");
+        if (!$this->check()) {
+            die("Problème avec le template ou la vue: {$this->pathTemplate} / {$this->pathView}");
         }
+
+        
+        extract($this->data);
+
+
+        $pathView = $this->pathView;
+
+        
+        include $this->pathTemplate;
     }
-
-
-    
 }
