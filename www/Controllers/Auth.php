@@ -22,9 +22,7 @@ class Auth extends Base
         SessionManager::start();
     }
 
-    /**
-     * Affiche le formulaire d'inscription
-     */
+    
     public function signupForm(): void
     {
         $csrfToken = SessionManager::generateCsrfToken();
@@ -35,9 +33,7 @@ class Auth extends Base
         ]);
     }
 
-    /**
-     * Traite l'inscription d'un nouvel utilisateur
-     */
+   
 public function signup(): void
 {
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -131,9 +127,7 @@ public function signup(): void
 }
 
 
-    /**
-     * Active le compte utilisateur via le token reçu par email
-     */
+    
 public function activation(): void
 {
     $token = $_GET['token'] ?? null;
@@ -164,9 +158,7 @@ public function activation(): void
 }
 
 
-    /**
-     * Affiche le formulaire de connexion
-     */
+  
 public function loginForm(): void
     {
         $csrfToken = SessionManager::generateCsrfToken();
@@ -178,9 +170,7 @@ public function loginForm(): void
         ]);
     }
 
-    /**
-     * Traite la connexion de l'utilisateur
-     */
+   
 public function login(): void
 {
     if ($_SERVER['REQUEST_METHOD'] !== 'POST' ||
@@ -221,26 +211,22 @@ public function login(): void
     SessionManager::set("user_email", $user->getEmail());
     SessionManager::set("is_logged_in", true);
     SessionManager::set("is_active", true);
+    SessionManager::set("user_role", $user->getRole());
 
-    // 👉 Appeler directement PageController::index()
+
     $pageController = new \App\Controller\PageController();
     $pageController->index();
 }
 
 
-    /**
-     * Déconnexion de l'utilisateur
-     */
+  
 public function logout(): void
 {
-    // Détruire la session proprement
     SessionManager::start();
     SessionManager::destroy();
 
-    // Optionnel : message flash
     SessionManager::set('flash_success', 'Vous avez été déconnecté.');
 
-    // Réutiliser la logique de Base::index()
     $base = new \App\Controller\Base();
     $base->index();
 }
@@ -256,9 +242,7 @@ public function logout(): void
         }
     }
 
-    /**
-     * Affiche le dashboard (protégé)
-     */
+    
    
     public function forgotForm(): void{    
         $csrfToken = SessionManager::generateCsrfToken();
@@ -316,8 +300,8 @@ public function logout(): void
         ]);  
         
 }
-public function reset(): void
-{
+    public function reset(): void
+    {
     if ($_SERVER['REQUEST_METHOD'] !== 'POST' ||
         !SessionManager::verifyCsrfToken($_POST['csrf_token'] ?? '')
     ) {

@@ -32,7 +32,7 @@ public function findAll(): array
 {
     $sql = "SELECT * FROM {$this->table} ORDER BY updated_at DESC";
     $stmt = $this->pdo->query($sql);
-    $rows = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     $pages = [];
     foreach ($rows as $row) {

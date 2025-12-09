@@ -58,7 +58,15 @@ class SessionManager
     public static function verifyCsrfToken(string $token): bool
     {
         $sessionToken = self::get('csrf_token');
-        // Utiliser hash_equals pour une comparaison sécurisée contre les attaques par timing
         return is_string($sessionToken) && is_string($token) && hash_equals($sessionToken, $token);
     }
+    public static function getFlash(string $key): ?string
+{
+    $value = self::get($key);
+    if ($value !== null) {
+        self::set($key, null); 
+    }
+    return $value;
+}
+
 }

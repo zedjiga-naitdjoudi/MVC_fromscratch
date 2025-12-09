@@ -69,3 +69,23 @@
 /delete:
   controller: "PageController"
   action: "delete"
+
+/users:
+  controller: AdminUserController
+  action: "index"
+
+/users/update-role:
+  controller: AdminUserController
+  action: "updateRole"
+
+/users/create:
+  controller: AdminUserController
+  action: createForm
+
+/users/create-post:
+  controller: AdminUserController
+  action: create
+
+/users/delete:
+  controller: AdminUserController
+  action: delete

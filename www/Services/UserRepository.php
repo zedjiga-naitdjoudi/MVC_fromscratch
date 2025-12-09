@@ -51,8 +51,8 @@ class UserRepository
 
     public function save(User $user): int
     {
-        $sql = "INSERT INTO {$this->table} (name, email, password, confirmation_token, is_confirmed)
-                VALUES (:name, :email, :password, :confirmation_token, :is_confirmed)";
+        $sql = "INSERT INTO {$this->table} (name, email, password, confirmation_token, is_confirmed, role)
+                VALUES (:name, :email, :password, :confirmation_token, :is_confirmed, :role)";
         
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute([
@@ -60,7 +60,8 @@ class UserRepository
             'email' => $user->getEmail(),
             'password' => $user->getPassword(),
             'confirmation_token' => $user->getConfirmationToken(),
-            'is_confirmed' => (int)$user->isConfirmed()
+            'is_confirmed' => (int)$user->isConfirmed(),
+            'role' => 'ROLE_USER'
         ]);
        
         return (int) $this->pdo->lastInsertId();
@@ -109,7 +110,31 @@ class UserRepository
           ->setIsConfirmed((bool)$data['is_confirmed'])
           ->setConfirmationToken($data['confirmation_token'] ?? null)
           ->setResetToken($data['reset_token'] ?? null)
-          ->setResetTokenExpiresAt($data['reset_token_expires_at'] ?? null);
+          ->setResetTokenExpiresAt($data['reset_token_expires_at'] ?? null)
+          ->setRole($data['role'] ?? 'ROLE_USER');
         return $u;
     }
+
+    public function updateRole(int $userId, string $role): bool
+    {
+        $sql = "UPDATE {$this->table} SET role = :role WHERE id = :id";
+        $stmt = $this->pdo->prepare($sql);
+        return $stmt->execute([
+            'role' => $role,
+            'id' => $userId
+    ]);
+    }
+    public function findAll(): array
+    {
+        $sql = "SELECT * FROM {$this->table} ORDER BY id ASC";
+        $stmt = $this->pdo->query($sql);
+
+        $users = [];
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $users[] = $this->hydrate($row);
+        }
+
+        return $users;
+    }
+
 }

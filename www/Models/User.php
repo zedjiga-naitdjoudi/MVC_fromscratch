@@ -12,6 +12,8 @@ class User
     protected ?string $confirmationToken = null;
     protected ?string $resetToken = null;
     protected ?string $resetTokenExpiresAt = null;
+    protected string $role = 'ROLE_USER';
+
 
     // Getters et Setters (omission pour la concision)
     public function getId(): ?int { return $this->id; }
@@ -30,4 +32,8 @@ class User
     public function setResetToken(?string $resetToken): self { $this->resetToken = $resetToken; return $this; }
     public function getResetTokenExpiresAt(): ?string { return $this->resetTokenExpiresAt; }
     public function setResetTokenExpiresAt(?string $resetTokenExpiresAt): self { $this->resetTokenExpiresAt = $resetTokenExpiresAt; return $this; }
+    public function getRole(): string { return $this->role; }
+    public function setRole(string $role): self { $this->role = $role; return $this; }
+    public function isAdmin(): bool { return $this->role === 'ROLE_ADMIN';}
+    public function isEditor(): bool { return $this->role === 'ROLE_EDITOR' || $this->isAdmin();}
 }
