@@ -7,9 +7,9 @@ class SessionManager
     public static function start(): void
     {
         if (session_status() === PHP_SESSION_NONE) {
-            ini_set('session.use_strict_mode', 1);
-            ini_set('session.cookie_httponly', 1 );
-            ini_set('session.use_only_cookies', 1);
+            ini_set('session.use_strict_mode', 1); //PHP rejettera session id non généré
+            ini_set('session.cookie_httponly', 1 ); //empêche JavaScript d’accéder au cookie de session (réduction XSS impact).
+            ini_set('session.use_only_cookies', 1); //interdit l’utilisation de session id en URL.
             session_start();
         }
     }

@@ -10,6 +10,7 @@ class Page {
     private ?int $authorId = null; 
     private ?string $createdAt = null; 
     private ?string $updatedAt = null; 
+    private ?string $authorEmail = null;
 
     public function getId(): ?int { return $this->id; }
     public function setId(int $id): self { $this->id = $id; return $this; }
@@ -35,5 +36,13 @@ class Page {
     public function getUpdatedAt(): ?string { return $this->updatedAt; }
     public function setUpdatedAt(?string $ts): self { $this->updatedAt = $ts; return $this; }
 
-
+     public function getAuthorEmail(): ?string
+    {
+        return $this->authorEmail;
+    }
+    public function setAuthorEmail(?string $email): self
+    {
+        $this->authorEmail = $email;
+        return $this;
+    }
 }

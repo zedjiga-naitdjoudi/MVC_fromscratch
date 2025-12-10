@@ -26,3 +26,6 @@ CREATE TABLE pages (
         ON DELETE SET NULL
 );
 
+UPDATE users
+SET role = 'ROLE_ADMIN'
+WHERE email = 'z@email.com';

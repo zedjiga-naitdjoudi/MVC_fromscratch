@@ -19,4 +19,4 @@
 </form>
 
 <p><a href="/forgot">Mot de passe oublié ?</a></p>
-<p><a href="/">Retour à l'accueil</a> | <a href="/register">Créer un compte</a></p>
+<p><a href="/">Retour à l'accueil</a> | <a href="/signup">Créer un compte</a></p>

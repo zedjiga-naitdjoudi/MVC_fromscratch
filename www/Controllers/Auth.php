@@ -66,7 +66,7 @@ public function signup(): void
     }
 
     if (strlen($name) < 2) {
-        $this->errors[] = "Votre prénom doit faire au minimum 2 caractères.";
+        $this->errors[] = "Votre nom doit faire au minimum 2 caractères.";
     }
 
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {

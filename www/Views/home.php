@@ -3,6 +3,9 @@
 
 <?php if (!empty($is_logged_in)): ?>
     <p>Vous êtes connecté !</p>
+    <p>
+        <a href="/logout">Se déconnecter</a>
+    </p>
 <?php else: ?>
     <p>Vous n'êtes pas connecté.</p>
     <p>

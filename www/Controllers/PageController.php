@@ -4,16 +4,32 @@ namespace App\Controller;
 use App\Core\SessionManager;
 use App\Service\PageManager;
 use App\Model\Page;
+use App\Service\UserRepository;
 
 class PageController extends Base
 {
     private PageManager $manager;
+    private UserRepository $userRepo;
 
     public function __construct()
     {
         SessionManager::start();
-        $this->manager = new PageManager();
+        $this->manager  = new PageManager();
+        $this->userRepo = new UserRepository();
     }
+
+    
+
+    private function hydrateAuthorEmails(array $pages): array
+    {
+        foreach ($pages as $page) {
+            $user = $this->userRepo->findById($page->getAuthorId());
+            $page->setAuthorEmail($user ? $user->getEmail() : 'Inconnu');
+        }
+        return $pages;
+    }
+
+  
 
     public function index(): void
     {
@@ -24,13 +40,15 @@ class PageController extends Base
             return;
         }
 
-        $pages = $this->manager->findAll();
+        $pages = $this->hydrateAuthorEmails(
+            $this->manager->findAll()
+        );
 
-        $flash = SessionManager::get('flash_success') ?: SessionManager::get('flash_error');
-        if ($flash) {
-            SessionManager::set('flash_success', null);
-            SessionManager::set('flash_error', null);
-        }
+        $flash = SessionManager::get('flash_success')
+              ?: SessionManager::get('flash_error');
+
+        SessionManager::set('flash_success', null);
+        SessionManager::set('flash_error', null);
 
         $this->renderPage('pages', 'backoffice', [
             'pages' => $pages,
@@ -38,158 +56,128 @@ class PageController extends Base
         ]);
     }
 
+ 
+
     public function createForm(): void
     {
-        if (!SessionManager::get('is_logged_in')) {
-            $this->index();
-            return;
-        }
+        $this->requireLogin();
 
-        $csrf = SessionManager::generateCsrfToken();
         $this->renderPage('create', 'backoffice', [
-            'csrf_token' => $csrf
+            'csrf_token' => SessionManager::generateCsrfToken(),
+            'error' => SessionManager::get('flash_error')
         ]);
+
+        SessionManager::set('flash_error', null);
     }
 
     public function create(): void
     {
-        if (!SessionManager::get('is_logged_in')) {
+        $this->requireLogin();
+
+        if (!$this->isValidPost()) {
+            SessionManager::set('flash_error', 'Erreur CSRF.');
             $this->index();
             return;
         }
 
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST' ||
-            !SessionManager::verifyCsrfToken($_POST['csrf_token'] ?? '')
-        ) {
-            SessionManager::set('flash_error', 'Erreur CSRF ou méthode invalide.');
-            $this->index();
-            return;
-        }
-
-        $title = trim($_POST['title'] ?? '');
-        $slug = trim($_POST['slug'] ?? '');
+        $title   = trim($_POST['title'] ?? '');
         $content = trim($_POST['content'] ?? '');
-        $isPublished = isset($_POST['is_published']) && $_POST['is_published'] === '1';
+        $slug    = $this->slugify($_POST['slug'] ?? $title);
+        $published = isset($_POST['is_published']);
 
-        $errors = [];
         if ($title === '' || $content === '') {
-            $errors[] = 'Titre et contenu requis.';
+            SessionManager::set('flash_error', 'Titre et contenu requis.');
+            $this->createForm();
+            return;
         }
-
-        $slug = $slug === '' ? $this->slugify($title) : $this->slugify($slug);
 
         if ($this->manager->findBySlug($slug)) {
-            $errors[] = 'Le slug existe déjà, choisissez-en un autre.';
-        }
-
-        if (!empty($errors)) {
-            SessionManager::set('flash_error', implode(' ', $errors));
+            SessionManager::set('flash_error', 'Slug déjà utilisé.');
             $this->createForm();
             return;
         }
 
         $page = (new Page())
             ->setTitle($title)
-            ->setSlug($slug)
             ->setContent($content)
-            ->setIsPublished($isPublished)
+            ->setSlug($slug)
+            ->setIsPublished($published)
             ->setAuthorId(SessionManager::get('user_id'));
 
-        $id = $this->manager->create($page);
+        $ok = $this->manager->create($page);
+
         SessionManager::set(
-            $id ? 'flash_success' : 'flash_error',
-            $id ? 'Page créée avec succès.' : 'Erreur lors de la création.'
+            $ok ? 'flash_success' : 'flash_error',
+            $ok ? 'Page créée.' : 'Erreur création.'
         );
 
         $this->index();
     }
 
+   
     public function editForm(int $id): void
     {
-        if (!SessionManager::get('is_logged_in')) {
-            $this->index();
-            return;
-        }
+        $this->requireLogin();
 
         $page = $this->manager->findById($id);
-        if (!$page) {
-            SessionManager::set('flash_error', 'Page introuvable.');
+        if (!$page || !$this->canEdit($page)) {
+            SessionManager::set('flash_error', 'Accès refusé.');
             $this->index();
             return;
         }
 
-      
-        $userId   = SessionManager::get('user_id');
-        $userRole = SessionManager::get('user_role');
-
-        if ($userRole !== 'ROLE_ADMIN' && $page->getAuthorId() !== $userId) {
-            SessionManager::set('flash_error', 'Action interdite.');
-            $this->index();
-            return;
-        }
-
-        $csrf = SessionManager::generateCsrfToken();
         $this->renderPage('edit', 'backoffice', [
             'page' => $page,
-            'csrf_token' => $csrf
+            'csrf_token' => SessionManager::generateCsrfToken()
         ]);
     }
 
     public function update(): void
     {
-        if (!SessionManager::get('is_logged_in')) {
-            $this->index(); return;
-        }
+        $this->requireLogin();
 
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST' ||
-            !SessionManager::verifyCsrfToken($_POST['csrf_token'] ?? '')
-        ) {
-            SessionManager::set('flash_error', 'Erreur CSRF.');
-            $this->index(); return;
-        }
-
-        $id = (int)($_POST['id'] ?? 0);
-        $page = $this->manager->findById($id);
-
-        if (!$page) {
-            SessionManager::set('flash_error', 'Page introuvable.');
-            $this->index(); return;
-        }
-
-        $userId   = SessionManager::get('user_id');
-        $userRole = SessionManager::get('user_role');
-
-        if ($userRole !== 'ROLE_ADMIN' && $page->getAuthorId() !== $userId) {
-            SessionManager::set('flash_error', 'Action interdite.');
+        if (!$this->isValidPost()) {
             $this->index();
             return;
         }
 
-        $title = trim($_POST['title'] ?? '');
-        $slug = $this->slugify(trim($_POST['slug'] ?? $title));
-        $content = trim($_POST['content'] ?? '');
-        $isPublished = isset($_POST['is_published']) && $_POST['is_published'] === '1';
+        $page = $this->manager->findById((int)$_POST['id']);
+        if (!$page || !$this->canEdit($page)) {
+            $this->index();
+            return;
+        }
+
+        $title   = trim($_POST['title']);
+        $content = trim($_POST['content']);
+        $slug    = $this->slugify($_POST['slug'] ?? $title);
+        $published = isset($_POST['is_published']);
 
         if ($title === '' || $content === '') {
-            SessionManager::set('flash_error', 'Titre et contenu requis.');
-            $this->editForm($id);
+            $this->renderPage('edit', 'backoffice', [
+                'page' => $page,
+                'errors' => ['Titre et contenu requis.'],
+                'csrf_token' => SessionManager::generateCsrfToken()
+            ]);
             return;
         }
 
-        $existing = $this->manager->findBySlug($slug);
-        if ($existing && $existing->getId() !== $id) {
-            SessionManager::set('flash_error', 'Le slug est utilisé par une autre page.');
-            $this->editForm($id);
+        $other = $this->manager->findBySlug($slug);
+        if ($other && $other->getId() !== $page->getId()) {
+            $this->renderPage('edit', 'backoffice', [
+                'page' => $page,
+                'errors' => ['Slug déjà utilisé.'],
+                'csrf_token' => SessionManager::generateCsrfToken()
+            ]);
             return;
         }
 
-        $page
-            ->setTitle($title)
-            ->setSlug($slug)
-            ->setContent($content)
-            ->setIsPublished($isPublished);
+        $page->setTitle($title)
+             ->setContent($content)
+             ->setSlug($slug)
+             ->setIsPublished($published);
 
         $ok = $this->manager->update($page);
+
         SessionManager::set(
             $ok ? 'flash_success' : 'flash_error',
             $ok ? 'Page mise à jour.' : 'Erreur mise à jour.'
@@ -198,42 +186,26 @@ class PageController extends Base
         $this->index();
     }
 
+    
+   
+
     public function delete(): void
     {
-        if (!SessionManager::get('is_logged_in')) {
-            $this->index(); return;
-        }
+        $this->requireLogin();
 
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST' ||
-            !SessionManager::verifyCsrfToken($_POST['csrf_token'] ?? '')
-        ) {
-            SessionManager::set('flash_error', 'Erreur CSRF.');
-            $this->index(); return;
-        }
-
-        $id = (int)($_POST['id'] ?? 0);
-        if ($id === 0) {
-            SessionManager::set('flash_error', 'ID manquant pour suppression.');
-            $this->index(); return;
-        }
-
-        $page = $this->manager->findById($id);
-        if (!$page) {
-            SessionManager::set('flash_error', 'Page introuvable.');
-            $this->index(); return;
-        }
-
-        
-        $userId   = SessionManager::get('user_id');
-        $userRole = SessionManager::get('user_role');
-
-        if ($userRole !== 'ROLE_ADMIN' && $page->getAuthorId() !== $userId) {
-            SessionManager::set('flash_error', 'Action interdite.');
+        if (!$this->isValidPost()) {
             $this->index();
             return;
         }
 
-        $ok = $this->manager->delete($id);
+        $page = $this->manager->findById((int)$_POST['id']);
+        if (!$page || !$this->canEdit($page)) {
+            $this->index();
+            return;
+        }
+
+        $ok = $this->manager->delete($page->getId());
+
         SessionManager::set(
             $ok ? 'flash_success' : 'flash_error',
             $ok ? 'Page supprimée.' : 'Erreur suppression.'
@@ -241,6 +213,8 @@ class PageController extends Base
 
         $this->index();
     }
+
+ 
 
     public function view(string $slug): void
     {
@@ -256,6 +230,28 @@ class PageController extends Base
         ]);
     }
 
+   
+
+    private function requireLogin(): void
+    {
+        if (!SessionManager::get('is_logged_in')) {
+            $this->index();
+            exit;
+        }
+    }
+
+    private function isValidPost(): bool
+    {
+        return $_SERVER['REQUEST_METHOD'] === 'POST'
+            && SessionManager::verifyCsrfToken($_POST['csrf_token'] ?? '');
+    }
+
+    private function canEdit(Page $page): bool
+    {
+        return SessionManager::get('user_role') === 'ROLE_ADMIN'
+            || $page->getAuthorId() === SessionManager::get('user_id');
+    }
+
     private function slugify(string $text): string
     {
         $text = preg_replace('~[^\pL\d]+~u', '-', $text);
@@ -264,8 +260,6 @@ class PageController extends Base
         $text = trim($text, '-');
         $text = strtolower($text);
 
-        return empty($text)
-            ? 'page-' . bin2hex(random_bytes(4))
-            : $text;
+        return $text ?: 'page-' . bin2hex(random_bytes(4));
     }
 }

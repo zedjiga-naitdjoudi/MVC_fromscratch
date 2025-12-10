@@ -1,4 +1,8 @@
 <h2>Créer une page</h2>
+<?php if (!empty($error)): ?>
+    <p style="color:red"><?= htmlspecialchars($error) ?></p>
+<?php endif; ?>
+
 
 <form method="POST" action="create_post">
     <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf_token ?? '') ?>">

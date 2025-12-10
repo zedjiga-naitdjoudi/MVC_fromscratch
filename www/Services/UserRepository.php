@@ -136,5 +136,14 @@ class UserRepository
 
         return $users;
     }
+    public function findById(int $id): ?User
+{
+    $sql = "SELECT * FROM users WHERE id = :id LIMIT 1";
+    $stmt = $this->pdo->prepare($sql);
+    $stmt->execute(['id' => $id]);
+    $data = $stmt->fetch(\PDO::FETCH_ASSOC);
+    return $data ? $this->hydrate($data) : null;
+}
+
 
 }
