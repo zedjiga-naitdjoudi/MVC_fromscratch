@@ -1,4 +1,5 @@
 <h2>Connexion</h2>
+
 <?php if (!empty($_SESSION['activation_message'])): ?>
     <p style="color: green;">
         <?= htmlspecialchars($_SESSION['activation_message']) ?>
@@ -6,7 +7,10 @@
     <?php unset($_SESSION['activation_message']); ?>
 <?php endif; ?>
 
-<?php if (!empty($error)): ?><p><?= htmlspecialchars($error) ?></p><?php endif; ?>
+<?php if (!empty($error)): ?>
+    <p style="color:red"><?= htmlspecialchars($error) ?></p>
+<?php endif; ?>
+
 <form method="POST" action="/login-post">
     <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf_token) ?>">
     <input type="email" name="email" placeholder="Email" required>
@@ -15,8 +19,4 @@
 </form>
 
 <p><a href="/forgot">Mot de passe oublié ?</a></p>
-
-
-<?php
-$hash = password_hash('MonSuperMotDePasse123', PASSWORD_DEFAULT);
-echo $hash; 
+<p><a href="/">Retour à l'accueil</a> | <a href="/register">Créer un compte</a></p>

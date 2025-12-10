@@ -5,10 +5,7 @@ namespace App\Core;
 use PDO;
 use PDOException;
 
-/**
- * Classe Database (Singleton)
- * Gère la connexion unique à la base de données via PDO.
- */
+
 class Database
 {
     private static ?Database $instance = null;

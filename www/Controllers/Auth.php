@@ -205,17 +205,27 @@ public function login(): void
     }
 
     // Connexion réussie
-    SessionManager::regenerateId();
-    SessionManager::set("user_id", $user->getId());
-    SessionManager::set("user_name", $user->getName());
-    SessionManager::set("user_email", $user->getEmail());
-    SessionManager::set("is_logged_in", true);
-    SessionManager::set("is_active", true);
-    SessionManager::set("user_role", $user->getRole());
+SessionManager::regenerateId();
+SessionManager::set("user_id", $user->getId());
+SessionManager::set("user_name", $user->getName());
+SessionManager::set("user_email", $user->getEmail());
+SessionManager::set("is_logged_in", true);
+SessionManager::set("is_active", true);
+SessionManager::set("user_role", $user->getRole());
+
+if ($user->getRole() === "ROLE_ADMIN") {
+    $adminUsers = $this->repo->findAll();
+
+    $this->renderPage("users", "backoffice", [
+        "users" => $adminUsers
+    ]);
+    return;
+}
 
 
-    $pageController = new \App\Controller\PageController();
-    $pageController->index();
+$pageController = new \App\Controller\PageController();
+$pageController->index();
+
 }
 
 

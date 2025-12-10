@@ -9,11 +9,19 @@
 <body>
 <header>
     <h1>Backoffice Dashboard</h1>
-    <nav>
-        <a href="/dashboard">Accueil</a> |
-        <a href="/create">Créer une page</a> |
-        <a href="/logout">Déconnexion</a>
-    </nav>
+    <?php use App\Core\SessionManager; ?>
+
+        <nav>
+        <a href="/dashboard">Accueil</a>
+        <a href="/create">Créer une page</a>
+
+    <?php if (SessionManager::get("user_role") === "ROLE_ADMIN"): ?>
+        <a href="/users">Utilisateurs</a>
+    <?php endif; ?>
+
+    <a href="/logout">Déconnexion</a>
+</nav>
+
 </header>
 
 
